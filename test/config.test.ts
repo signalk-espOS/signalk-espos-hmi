@@ -32,6 +32,13 @@ describe("applyDefaults", () => {
     ]);
   });
 
+  it("keeps a saved address when a new display is named like it", () => {
+    const { displays } = applyDefaults({
+      displays: [{ name: "Helm" }, { id: "helm", name: "Salon" }],
+    });
+    expect(displays.map((d) => d.id)).toEqual(["helm-2", "helm"]);
+  });
+
   it("falls back for an unknown screen size and drops junk entries", () => {
     const { displays } = applyDefaults({
       displays: [

@@ -124,12 +124,9 @@ async function run(): Promise<void> {
     show().catch((err: unknown) => say((err as Error).message));
   };
   events.addEventListener("layout", reload);
-  // A push made while the stream was down sent no event.
-  let opened = false;
-  events.addEventListener("open", () => {
-    if (opened) reload();
-    opened = true;
-  });
+  // A push made before the stream opened, or while it was down, sent no
+  // event here.
+  events.addEventListener("open", reload);
 
   if (renderer.interactive && !display.readOnly) {
     const send = (ev: PointerEvent, pressed: boolean): void => {

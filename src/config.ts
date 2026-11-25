@@ -55,7 +55,10 @@ function slug(s: string): string {
     .slice(0, 32);
 }
 
-function asDisplay(raw: unknown, index: number): DisplayProfile | null {
+function asDisplay(
+  raw: unknown,
+  index: number,
+): { display: DisplayProfile; explicit: boolean } | null {
   if (typeof raw !== "object" || raw === null) return null;
   const r = raw as Record<string, unknown>;
   const name =
@@ -63,15 +66,19 @@ function asDisplay(raw: unknown, index: number): DisplayProfile | null {
       ? r.name.trim()
       : `Display ${index + 1}`;
   let id = typeof r.id === "string" ? r.id.trim().toLowerCase() : "";
-  if (!ID_RE.test(id)) id = slug(name);
+  const explicit = ID_RE.test(id);
+  if (!explicit) id = slug(name);
   if (!ID_RE.test(id)) id = `display-${index + 1}`;
   return {
-    id,
-    name,
-    resolution: isResolution(r.resolution)
-      ? r.resolution
-      : DEFAULT_DISPLAY.resolution,
-    readOnly: r.readOnly === true,
+    display: {
+      id,
+      name,
+      resolution: isResolution(r.resolution)
+        ? r.resolution
+        : DEFAULT_DISPLAY.resolution,
+      readOnly: r.readOnly === true,
+    },
+    explicit,
   };
 }
 
@@ -83,15 +90,26 @@ export function applyDefaults(raw: unknown): Settings {
     Array.isArray((raw as { displays?: unknown }).displays)
       ? ((raw as { displays: unknown[] }).displays ?? [])
       : [];
+  const parsed = list.map((entry, i) => asDisplay(entry, i));
+  // Saved addresses are claimed first: a new display named like an old one
+  // must not take its address, and with it the old display's layout.
   const seen = new Set<string>();
+  const ids = parsed.map((p) => {
+    if (!p?.explicit || seen.has(p.display.id)) return null;
+    seen.add(p.display.id);
+    return p.display.id;
+  });
   const displays: DisplayProfile[] = [];
-  list.forEach((entry, i) => {
-    const d = asDisplay(entry, i);
-    if (!d) return;
-    let id = d.id;
-    for (let n = 2; seen.has(id); n++) id = `${d.id.slice(0, 29)}-${n}`;
-    seen.add(id);
-    displays.push({ ...d, id });
+  parsed.forEach((p, i) => {
+    if (!p) return;
+    let id = ids[i] ?? null;
+    if (id === null) {
+      const base = p.display.id;
+      id = base;
+      for (let n = 2; seen.has(id); n++) id = `${base.slice(0, 29)}-${n}`;
+      seen.add(id);
+    }
+    displays.push({ ...p.display, id });
   });
   if (displays.length === 0) displays.push({ ...DEFAULT_DISPLAY });
   return { displays };
@@ -135,7 +153,7 @@ export const schema = {
             title: "Address",
             description:
               "Short name in the display's web address (?display=…). Left empty, it is made from the name.",
-            pattern: "^[a-z0-9][a-z0-9-]{0,31}$",
+            pattern: "^([a-z0-9][a-z0-9-]{0,31})?$",
           },
           resolution: {
             type: "string",

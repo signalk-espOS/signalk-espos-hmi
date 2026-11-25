@@ -46,6 +46,8 @@ permissions: {}
 concurrency:
   group: publish
   cancel-in-progress: false
+  # A docs push queued behind a releasable one must not replace it.
+  queue: max
 
 jobs:
   # GitHub's release notes are never empty -- they always end in a "Full

@@ -29,6 +29,9 @@ second monitor that always shows the tanks.
 A display set to **show values only** never switches anything, whoever
 taps it.
 
+Touch needs a renderer that takes pointer input. Until the pin in
+`scripts/copy-wasm.sh` moves to one, every display shows values only.
+
 ## Hardware
 
 A Raspberry Pi 5 or better, or any PC, with Chromium in kiosk mode:
@@ -38,13 +41,18 @@ chromium --kiosk --noerrdialogs --disable-pinch \
   "http://<signalk-server>:3000/signalk-espos-hmi/?display=helm"
 ```
 
-The page keeps the screen awake while it is open.
+The page asks the browser to keep the screen awake while it is open. The
+browser grants that only on HTTPS or `localhost` and may release it, so a
+kiosk on plain HTTP should also turn off screen blanking in the operating
+system.
 
 ## Access
 
 Viewing needs read access to the server. Switching sends a Signal K PUT
 as the signed-in user, so with security on, the display's user needs
 read/write access. Pushing a layout needs admin, as in the designer.
+Servers too old to offer per-route access control gate none of the
+routes below.
 
 ## Routes
 

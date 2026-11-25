@@ -106,7 +106,6 @@ export default function (app: ServerAPI): Plugin {
 
     start: (raw: unknown) => {
       settings = applyDefaults(raw);
-      store = null;
       // Layouts are stored by address. One made from the name would move
       // with a rename and orphan the layout, so the first one made is kept.
       if (addressesMissing(raw, settings)) {

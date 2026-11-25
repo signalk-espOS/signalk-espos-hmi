@@ -14,6 +14,7 @@
   "scripts": {
     "build": "tsc && npm run build:webapp",
     "build:webapp": "bash scripts/copy-wasm.sh && vite build",
+    "predev": "bash scripts/copy-wasm.sh",
     "dev": "vite",
     "test": "npm run typecheck:test && vitest run",
     "typecheck": "tsc --noEmit && tsc --noEmit --project tsconfig.webapp.json",

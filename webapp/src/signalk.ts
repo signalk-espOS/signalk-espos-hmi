@@ -37,14 +37,15 @@ export class SkClient {
   /** Follows these paths from now on, replacing the previous set. */
   follow(paths: string[]): void {
     this.paths = paths;
-    this.notifications.clear();
-    this.h.onNotifications([]);
-    // An open socket is replaced at once; one still connecting subscribes
-    // to the new set when it opens.
+    this.resetNotifications();
+    // An open socket swaps its subscriptions; the server sends the last
+    // known values again. One still connecting subscribes when it opens.
     if (this.ws?.readyState === WebSocket.OPEN) {
-      const old = this.ws;
-      this.ws = null;
-      old.close();
+      this.ws.send(
+        JSON.stringify({ context: "*", unsubscribe: [{ path: "*" }] }),
+      );
+      this.ws.send(this.subscribeMessage());
+      return;
     }
     this.open();
   }
@@ -68,13 +69,10 @@ export class SkClient {
     this.ws = ws;
     ws.onopen = () => {
       this.retry = 1000;
+      // Alarms cleared while the socket was down are never sent again.
+      this.resetNotifications();
       this.h.onConnection(true);
-      const subscribe = [
-        ...this.paths,
-        "notifications.*",
-        "environment.mode",
-      ].map((path) => ({ path, policy: "instant" }));
-      ws.send(JSON.stringify({ context: "vessels.self", subscribe }));
+      ws.send(this.subscribeMessage());
     };
     ws.onmessage = (ev: MessageEvent<string>) => {
       let msg: Delta;
@@ -93,6 +91,20 @@ export class SkClient {
       this.retryTimer = setTimeout(() => this.open(), this.retry);
       this.retry = Math.min(this.retry * 2, 15000);
     };
+  }
+
+  private subscribeMessage(): string {
+    const subscribe = [
+      ...this.paths,
+      "notifications.*",
+      "environment.mode",
+    ].map((path) => ({ path, policy: "instant" }));
+    return JSON.stringify({ context: "vessels.self", subscribe });
+  }
+
+  private resetNotifications(): void {
+    this.notifications.clear();
+    this.h.onNotifications([]);
   }
 
   private delta(msg: Delta): void {
