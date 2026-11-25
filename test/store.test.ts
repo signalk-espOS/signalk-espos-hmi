@@ -39,7 +39,8 @@ describe("LayoutStore", () => {
       store.write("helm", layout),
       store.write("helm", other),
     ]);
-    expect([layout, other]).toContainEqual(await store.read("helm"));
+    // Writes run in order, so the later push is the one kept.
+    expect(await store.read("helm")).toEqual(other);
   });
 
   it("treats a damaged file as no layout", async () => {

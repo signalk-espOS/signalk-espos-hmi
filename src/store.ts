@@ -7,6 +7,9 @@ import { checkLayout, type Layout } from "./layout.js";
 
 export class LayoutStore {
   private writes = 0;
+  // One write per display at a time: Windows refuses to rename onto a
+  // file another rename is replacing (EPERM).
+  private readonly queues = new Map<string, Promise<void>>();
 
   constructor(private readonly dir: string) {}
 
@@ -36,12 +39,29 @@ export class LayoutStore {
   }
 
   /** Writes through a temporary file, so a crash never leaves half a layout. */
-  async write(displayId: string, layout: Layout): Promise<void> {
+  write(displayId: string, layout: Layout): Promise<void> {
+    const prev = this.queues.get(displayId) ?? Promise.resolve();
+    const next = prev
+      .catch(() => undefined)
+      .then(() => this.writeNow(displayId, layout));
+    this.queues.set(displayId, next);
+    const settle = (): void => {
+      if (this.queues.get(displayId) === next) this.queues.delete(displayId);
+    };
+    next.then(settle, settle);
+    return next;
+  }
+
+  private async writeNow(displayId: string, layout: Layout): Promise<void> {
     const file = this.file(displayId);
     await fs.mkdir(path.dirname(file), { recursive: true });
-    // Unique per write: two pushes at once must not fill the same file.
     const tmp = `${file}.${process.pid}.${++this.writes}.tmp`;
-    await fs.writeFile(tmp, JSON.stringify(layout));
-    await fs.rename(tmp, file);
+    try {
+      await fs.writeFile(tmp, JSON.stringify(layout));
+      await fs.rename(tmp, file);
+    } catch (err) {
+      await fs.rm(tmp, { force: true });
+      throw err;
+    }
   }
 }
