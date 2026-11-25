@@ -112,6 +112,9 @@ async function run(): Promise<void> {
     sk.follow(boundPaths(layout));
   };
   await show();
+  // A second screen at the helm can open on its own page: ?screen=<id>.
+  const screen = new URLSearchParams(location.search).get("screen");
+  if (screen) renderer.selectScreen(screen);
 
   // A layout pushed from the designer replaces this one at once.
   const events = new EventSource(

@@ -23,6 +23,9 @@ More screens: add a display per screen in the plugin settings, each with
 its size. Open a display directly with `?display=<address>`, for example
 `/signalk-espos-hmi/?display=salon`.
 
+Add `&screen=<id>` to open on one of the layout's screens, for example a
+second monitor that always shows the tanks.
+
 A display set to **show values only** never switches anything, whoever
 taps it.
 

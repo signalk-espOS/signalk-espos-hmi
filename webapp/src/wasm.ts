@@ -12,14 +12,16 @@ interface JlpModule {
   _jlp_init(w: number, h: number): number;
   _jlp_resize?(w: number, h: number): number;
   _jlp_apply_layout(json: number): number;
+  // The runtime mode (every screen, tabs, swipes, touch, writes). A
+  // bundle without it only previews the first screen.
+  _jlp_run_layout?(json: number): number;
+  _jlp_select_screen?(id: number): number;
   _jlp_set_value_float(path: number, v: number): void;
   _jlp_set_value_int(path: number, v: number): void;
   _jlp_set_value_bool(path: number, v: number): void;
   _jlp_set_path_meta(path: number, meta: number): void;
   _jlp_set_notifications(json: number): void;
   _jlp_set_theme?(mode: number): number;
-  // From the runtime mode on: touch in, writes out. A bundle without it
-  // still renders, as a display that only shows.
   _jlp_pointer?(x: number, y: number, pressed: number): void;
   _malloc(n: number): number;
   _free(p: number): void;
@@ -96,10 +98,17 @@ export class Renderer {
 
   /** Builds the layout; returns why not, or null when it is on screen. */
   apply(layout: unknown): string | null {
+    const run = this.mod._jlp_run_layout?.bind(this.mod);
     const err = this.withString(JSON.stringify(layout), (p) =>
-      this.mod.UTF8ToString(this.mod._jlp_apply_layout(p)),
+      this.mod.UTF8ToString(run ? run(p) : this.mod._jlp_apply_layout(p)),
     );
     return err === "" ? null : err;
+  }
+
+  /** Shows the screen with this id, as a tap on its tab would. */
+  selectScreen(id: string): boolean {
+    const fn = this.mod._jlp_select_screen?.bind(this.mod);
+    return fn ? this.withString(id, (p) => fn(p) === 1) : false;
   }
 
   setValue(path: string, v: SkScalar): void {
