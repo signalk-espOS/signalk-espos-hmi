@@ -3,6 +3,7 @@ import type { Request, Response } from "express";
 import { readFileSync } from "node:fs";
 
 import {
+  addressesMissing,
   applyDefaults,
   resolutionSize,
   schema,
@@ -64,9 +65,19 @@ export default function (app: ServerAPI): Plugin {
     };
   };
 
+  const pings = new Map<Response, NodeJS.Timeout>();
+
+  const send = (res: Response, text: string): void => {
+    if (res.writableEnded) return;
+    res.write(text);
+    // Signal K compresses responses; without a flush an event can wait in
+    // the compressor's buffer indefinitely.
+    (res as Response & { flush?: () => void }).flush?.();
+  };
+
   const notify = (displayId: string, name: string): void => {
     for (const res of listeners.get(displayId) ?? []) {
-      res.write(`event: layout\ndata: ${JSON.stringify({ name })}\n\n`);
+      send(res, `event: layout\ndata: ${JSON.stringify({ name })}\n\n`);
     }
   };
 
@@ -96,12 +107,21 @@ export default function (app: ServerAPI): Plugin {
     start: (raw: unknown) => {
       settings = applyDefaults(raw);
       store = null;
+      // Layouts are stored by address. One made from the name would move
+      // with a rename and orphan the layout, so the first one made is kept.
+      if (addressesMissing(raw, settings)) {
+        app.savePluginOptions({ ...(raw as object), ...settings }, (err) => {
+          if (err) app.error(`saving display addresses: ${err.message}`);
+        });
+      }
       showStatus().catch((err: unknown) => {
         app.setPluginError(`status: ${(err as Error).message}`);
       });
     },
 
     stop: () => {
+      for (const ping of pings.values()) clearInterval(ping);
+      pings.clear();
       for (const set of listeners.values()) {
         for (const res of set) res.end();
       }
@@ -205,17 +225,22 @@ export default function (app: ServerAPI): Plugin {
         }
         res.set({
           "Content-Type": "text/event-stream",
-          "Cache-Control": "no-cache",
+          // no-transform keeps the compression middleware off the stream.
+          "Cache-Control": "no-cache, no-transform",
           Connection: "keep-alive",
         });
         res.flushHeaders();
         // A comment line every 25 s keeps proxies from closing a quiet stream.
-        const ping = setInterval(() => res.write(": ping\n\n"), 25000);
+        pings.set(
+          res,
+          setInterval(() => send(res, ": ping\n\n"), 25000),
+        );
         const set = listeners.get(d.id) ?? new Set<Response>();
         set.add(res);
         listeners.set(d.id, set);
-        req.on("close", () => {
-          clearInterval(ping);
+        res.on("close", () => {
+          clearInterval(pings.get(res));
+          pings.delete(res);
           set.delete(res);
         });
       });

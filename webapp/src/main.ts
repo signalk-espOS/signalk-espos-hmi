@@ -111,8 +111,15 @@ async function run(): Promise<void> {
   const events = new EventSource(
     `${PLUGIN}/displays/${encodeURIComponent(display.id)}/events`,
   );
-  events.addEventListener("layout", () => {
+  const reload = (): void => {
     show().catch((err: unknown) => say((err as Error).message));
+  };
+  events.addEventListener("layout", reload);
+  // A push made while the stream was down sent no event.
+  let opened = false;
+  events.addEventListener("open", () => {
+    if (opened) reload();
+    opened = true;
   });
 
   if (renderer.interactive && !display.readOnly) {

@@ -6,6 +6,8 @@ import path from "node:path";
 import { checkLayout, type Layout } from "./layout.js";
 
 export class LayoutStore {
+  private writes = 0;
+
   constructor(private readonly dir: string) {}
 
   private file(displayId: string): string {
@@ -37,7 +39,8 @@ export class LayoutStore {
   async write(displayId: string, layout: Layout): Promise<void> {
     const file = this.file(displayId);
     await fs.mkdir(path.dirname(file), { recursive: true });
-    const tmp = `${file}.tmp`;
+    // Unique per write: two pushes at once must not fill the same file.
+    const tmp = `${file}.${process.pid}.${++this.writes}.tmp`;
     await fs.writeFile(tmp, JSON.stringify(layout));
     await fs.rename(tmp, file);
   }

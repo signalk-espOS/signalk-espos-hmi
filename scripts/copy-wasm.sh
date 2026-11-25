@@ -2,7 +2,7 @@
 # Stages the LVGL renderer (espos-p4-cockpit-wasm) into webapp/public/wasm/
 # so Vite ships it with the page. Run before `vite build`.
 #
-# Source, in order:
+# Source, in order (a release build only uses the last):
 #   1. JLP_WASM_DIR, a local directory holding jlp_wasm.{js,wasm}
 #   2. ../espos-p4-cockpit-wasm/public, a sibling checkout
 #   3. the wasm repository at JLP_WASM_REF, fetched over HTTPS
@@ -27,7 +27,8 @@ required() { [[ "${flag}" =~ ^(1|true|yes|on)$ ]]; }
 
 mkdir -p "${DEST}"
 
-if [[ -f "${SRC}/jlp_wasm.js" && -f "${SRC}/jlp_wasm.wasm" ]]; then
+# A release takes the pinned bundle only, never a local working tree.
+if ! required && [[ -f "${SRC}/jlp_wasm.js" && -f "${SRC}/jlp_wasm.wasm" ]]; then
   cp -f "${SRC}/jlp_wasm.js" "${SRC}/jlp_wasm.wasm" "${DEST}/"
   echo "[copy-wasm] copied the renderer from ${SRC}"
   exit 0

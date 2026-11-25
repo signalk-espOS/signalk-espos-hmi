@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { applyDefaults, resolutionSize, schema } from "../src/config.js";
+import {
+  addressesMissing,
+  applyDefaults,
+  resolutionSize,
+  schema,
+} from "../src/config.js";
 
 describe("applyDefaults", () => {
   it("gives a fresh install one Full HD helm display", () => {
@@ -49,5 +54,20 @@ describe("resolutionSize", () => {
 describe("schema", () => {
   it("requires nothing at the top level", () => {
     expect("required" in schema).toBe(false);
+  });
+});
+
+describe("addressesMissing", () => {
+  it("is false for a fresh install and for complete settings", () => {
+    expect(addressesMissing({}, applyDefaults({}))).toBe(false);
+    const raw = { displays: [{ id: "helm", name: "Helm" }] };
+    expect(addressesMissing(raw, applyDefaults(raw))).toBe(false);
+  });
+
+  it("is true when an address was made up or an entry dropped", () => {
+    const named = { displays: [{ name: "Salon" }] };
+    expect(addressesMissing(named, applyDefaults(named))).toBe(true);
+    const junk = { displays: [{ id: "helm" }, null] };
+    expect(addressesMissing(junk, applyDefaults(junk))).toBe(true);
   });
 });

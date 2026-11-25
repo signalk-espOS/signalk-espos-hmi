@@ -97,6 +97,21 @@ export function applyDefaults(raw: unknown): Settings {
   return { displays };
 }
 
+/**
+ * True when settings saved by the form lack an address that applyDefaults
+ * had to make up, so the made-up ones should be saved. A fresh install
+ * (`{}`) gets the fixed default address and needs nothing saved.
+ */
+export function addressesMissing(raw: unknown, settings: Settings): boolean {
+  const list = (raw as { displays?: unknown } | null)?.displays;
+  if (!Array.isArray(list)) return false;
+  if (list.length !== settings.displays.length) return true;
+  return list.some(
+    (entry, i) =>
+      (entry as { id?: unknown } | null)?.id !== settings.displays[i]?.id,
+  );
+}
+
 export const schema = {
   type: "object",
   properties: {

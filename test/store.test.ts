@@ -32,6 +32,16 @@ describe("LayoutStore", () => {
     expect(await store.read("salon")).toBeNull();
   });
 
+  it("survives two writes at once", async () => {
+    const store = new LayoutStore(dir);
+    const other = { ...layout, name: "Other" };
+    await Promise.all([
+      store.write("helm", layout),
+      store.write("helm", other),
+    ]);
+    expect([layout, other]).toContainEqual(await store.read("helm"));
+  });
+
   it("treats a damaged file as no layout", async () => {
     await mkdir(path.join(dir, "layouts"));
     await writeFile(path.join(dir, "layouts", "helm.json"), "{nope");

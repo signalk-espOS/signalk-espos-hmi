@@ -19,6 +19,10 @@ class FakeRes {
   body: unknown;
   headers: Record<string, string> = {};
   written: string[] = [];
+  writableEnded = false;
+  on(): this {
+    return this;
+  }
   status(code: number): this {
     this.statusCode = code;
     return this;
@@ -33,6 +37,7 @@ class FakeRes {
     return this;
   }
   end(): this {
+    this.writableEnded = true;
     return this;
   }
   flushHeaders(): void {}
@@ -64,6 +69,7 @@ describe("plugin", () => {
   let dir = "";
   let plugin: Plugin;
   let status = "";
+  let saved: unknown;
   const routes = new Map<string, Handler>();
 
   const call = async (key: string, r: FakeReq): Promise<FakeRes> => {
@@ -77,6 +83,7 @@ describe("plugin", () => {
   beforeEach(async () => {
     dir = await mkdtemp(path.join(tmpdir(), "espos-hmi-"));
     routes.clear();
+    saved = undefined;
     const app = {
       getDataDirPath: () => dir,
       getSelfPath: () => undefined,
@@ -87,6 +94,10 @@ describe("plugin", () => {
         throw new Error(s);
       },
       error: () => undefined,
+      savePluginOptions: (o: unknown, cb: (err: null) => void) => {
+        saved = o;
+        cb(null);
+      },
     } as unknown as ServerAPI;
     plugin = createPlugin(app);
     plugin.registerWithRouter?.(fakeRouter(routes));
@@ -109,6 +120,25 @@ describe("plugin", () => {
           readOnly: false,
           w: 1920,
           h: 1080,
+        },
+      ],
+    });
+  });
+
+  it("saves nothing for a fresh install", () => {
+    expect(saved).toBeUndefined();
+  });
+
+  it("saves addresses made from names, so a rename keeps the layout", async () => {
+    await plugin.stop();
+    await plugin.start({ displays: [{ name: "Salon" }] }, () => undefined);
+    expect(saved).toEqual({
+      displays: [
+        {
+          id: "salon",
+          name: "Salon",
+          resolution: "1920x1080",
+          readOnly: false,
         },
       ],
     });

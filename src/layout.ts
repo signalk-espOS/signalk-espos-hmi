@@ -82,7 +82,9 @@ export function boundPaths(layout: Layout): string[] {
       if (Array.isArray(w.bars)) {
         for (const b of w.bars as unknown[]) {
           const bind = (b as { bind?: unknown } | null)?.bind;
-          if (typeof bind === "string") paths.add(bind);
+          if (typeof bind === "string" && !bind.startsWith("@")) {
+            paths.add(bind);
+          }
         }
       }
     }

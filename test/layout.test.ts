@@ -14,7 +14,12 @@ const ok = {
         {
           type: "bargroup",
           id: "c",
-          bars: [{ bind: "tanks.fuel.0.currentLevel" }, { bind: 5 }, null],
+          bars: [
+            { bind: "tanks.fuel.0.currentLevel" },
+            { bind: "@local" },
+            { bind: 5 },
+            null,
+          ],
         },
       ],
     },
