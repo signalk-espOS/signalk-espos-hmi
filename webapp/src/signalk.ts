@@ -29,6 +29,7 @@ export class SkClient {
   private paths: string[] = [];
   private retry = 1000;
   private closed = false;
+  private retryTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly notifications = new Map<string, NotificationRow>();
 
   constructor(private readonly h: SkHandlers) {}
@@ -38,19 +39,28 @@ export class SkClient {
     this.paths = paths;
     this.notifications.clear();
     this.h.onNotifications([]);
+    // An open socket is replaced at once; one still connecting subscribes
+    // to the new set when it opens.
     if (this.ws?.readyState === WebSocket.OPEN) {
-      this.ws.close();
-    } else if (!this.ws) {
-      this.open();
+      const old = this.ws;
+      this.ws = null;
+      old.close();
     }
+    this.open();
   }
 
   stop(): void {
     this.closed = true;
+    if (this.retryTimer !== null) clearTimeout(this.retryTimer);
+    this.retryTimer = null;
     this.ws?.close();
   }
 
   private open(): void {
+    // One socket per page: a retry and a follow() must not both open one.
+    if (this.retryTimer !== null) clearTimeout(this.retryTimer);
+    this.retryTimer = null;
+    if (this.closed || this.ws) return;
     const proto = location.protocol === "https:" ? "wss:" : "ws:";
     const ws = new WebSocket(
       `${proto}//${location.host}/signalk/v1/stream?subscribe=none&sendMeta=all`,
@@ -76,10 +86,11 @@ export class SkClient {
       if (Array.isArray(msg.updates)) this.delta(msg);
     };
     ws.onclose = () => {
+      if (this.ws !== ws) return;
       this.ws = null;
       this.h.onConnection(false);
       if (this.closed) return;
-      setTimeout(() => this.open(), this.retry);
+      this.retryTimer = setTimeout(() => this.open(), this.retry);
       this.retry = Math.min(this.retry * 2, 15000);
     };
   }
@@ -145,8 +156,9 @@ export class SkClient {
    * normal, which the server's notification manager takes, where a PUT
    * to the path is not wired up.
    */
-  ack(pathAfterPrefix: string): void {
-    this.ws?.send(
+  ack(pathAfterPrefix: string): boolean {
+    if (this.ws?.readyState !== WebSocket.OPEN) return false;
+    this.ws.send(
       JSON.stringify({
         context: "vessels.self",
         updates: [
@@ -161,5 +173,6 @@ export class SkClient {
         ],
       }),
     );
+    return true;
   }
 }

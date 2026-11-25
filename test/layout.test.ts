@@ -69,3 +69,17 @@ describe("boundPaths", () => {
     ]);
   });
 });
+
+describe("checkLayout widgets", () => {
+  it("refuses a widget without type and id", () => {
+    expect(
+      checkLayout({ ...ok, screens: [{ id: "m", widgets: [null] }] }),
+    ).toEqual({ ok: false, err: "screen m: widget needs type and id" });
+    expect(
+      checkLayout({
+        ...ok,
+        screens: [{ id: "m", widgets: [{ type: "label" }] }],
+      }).ok,
+    ).toBe(false);
+  });
+});

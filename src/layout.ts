@@ -66,6 +66,17 @@ export function checkLayout(body: unknown): LayoutCheck {
     if (!Array.isArray(scr.widgets)) {
       return { ok: false, err: `screen ${scr.id} has no widgets` };
     }
+    for (const w of scr.widgets as unknown[]) {
+      const widget = w as { type?: unknown; id?: unknown } | null;
+      if (
+        typeof widget !== "object" ||
+        widget === null ||
+        typeof widget.type !== "string" ||
+        typeof widget.id !== "string"
+      ) {
+        return { ok: false, err: `screen ${scr.id}: widget needs type and id` };
+      }
+    }
     widgets += scr.widgets.length;
   }
   return { ok: true, layout: body as Layout, widgets };

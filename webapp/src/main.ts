@@ -90,14 +90,20 @@ async function run(): Promise<void> {
       );
     },
     (path) => {
-      if (!display.readOnly) sk.ack(path);
+      if (display.readOnly) return;
+      if (!sk.ack(path)) say("Not connected: the alarm was not acknowledged");
     },
   );
 
+  // Two pushes close together can answer out of order; only the newest
+  // request may replace the layout.
+  let generation = 0;
   const show = async (): Promise<void> => {
+    const mine = ++generation;
     const layout = await json<Layout>(
       `${PLUGIN}/displays/${encodeURIComponent(display.id)}/layout`,
     );
+    if (mine !== generation) return;
     const err = renderer.apply(layout);
     if (err) {
       say(`Layout not shown: ${err}`);
