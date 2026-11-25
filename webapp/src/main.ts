@@ -114,8 +114,11 @@ async function run(): Promise<void> {
       return;
     }
     sk.follow(boundPaths(layout));
-    if (screen && !renderer.selectScreen(screen)) {
-      say(`Screen "${screen}" not shown`);
+    if (screen) {
+      // Only this layout's warning is cleared; a connection notice stays.
+      const note = `Screen "${screen}" not shown`;
+      if (!renderer.selectScreen(screen)) say(note);
+      else if (notice.textContent === note) say(null);
     }
   };
   await show();
