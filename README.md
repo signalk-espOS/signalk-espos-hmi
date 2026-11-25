@@ -24,7 +24,9 @@ its size. Open a display directly with `?display=<address>`, for example
 `/signalk-espos-hmi/?display=salon`.
 
 Add `&screen=<id>` to open on one of the layout's screens, for example a
-second monitor that always shows the tanks.
+second monitor that always shows the tanks. This also needs a renderer with
+runtime mode; until the pin moves, a display shows the first screen and
+says so.
 
 A display set to **show values only** never switches anything, whoever
 taps it.

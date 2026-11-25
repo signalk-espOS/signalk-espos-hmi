@@ -106,7 +106,10 @@ export function applyDefaults(raw: unknown): Settings {
     if (id === null) {
       const base = p.display.id;
       id = base;
-      for (let n = 2; seen.has(id); n++) id = `${base.slice(0, 29)}-${n}`;
+      for (let n = 2; seen.has(id); n++) {
+        const suffix = `-${n}`;
+        id = `${base.slice(0, 32 - suffix.length)}${suffix}`;
+      }
       seen.add(id);
     }
     displays.push({ ...p.display, id });

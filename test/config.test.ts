@@ -39,6 +39,16 @@ describe("applyDefaults", () => {
     expect(displays.map((d) => d.id)).toEqual(["helm-2", "helm"]);
   });
 
+  it("keeps made-up addresses within 32 characters", () => {
+    const long = "a".repeat(40);
+    const { displays } = applyDefaults({
+      displays: Array.from({ length: 101 }, () => ({ name: long })),
+    });
+    const last = displays.at(-1)?.id ?? "";
+    expect(last).toBe(`${"a".repeat(28)}-101`);
+    expect(new Set(displays.map((d) => d.id)).size).toBe(101);
+  });
+
   it("falls back for an unknown screen size and drops junk entries", () => {
     const { displays } = applyDefaults({
       displays: [

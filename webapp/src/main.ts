@@ -95,6 +95,10 @@ async function run(): Promise<void> {
     },
   );
 
+  // A second screen at the helm can open on its own page: ?screen=<id>.
+  // A new layout starts on its first screen, so the choice is made again.
+  const screen = new URLSearchParams(location.search).get("screen");
+
   // Two pushes close together can answer out of order; only the newest
   // request may replace the layout.
   let generation = 0;
@@ -110,11 +114,11 @@ async function run(): Promise<void> {
       return;
     }
     sk.follow(boundPaths(layout));
+    if (screen && !renderer.selectScreen(screen)) {
+      say(`Screen "${screen}" not shown`);
+    }
   };
   await show();
-  // A second screen at the helm can open on its own page: ?screen=<id>.
-  const screen = new URLSearchParams(location.search).get("screen");
-  if (screen) renderer.selectScreen(screen);
 
   // A layout pushed from the designer replaces this one at once.
   const events = new EventSource(
