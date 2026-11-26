@@ -19,8 +19,9 @@ tanks, batteries, alarms.
 3. In the HMI designer, pick the browser display as the target and push.
    Every open page of that display switches to the new layout at once.
 
-More screens: add a display per screen in the plugin settings, each with
-its size. Open a display directly with `?display=<address>`, for example
+More screens: open `/signalk-espos-hmi/?settings` (or **Settings** under
+the list of displays) as admin and add a display per screen, each with
+its size. Changes reach open displays at once. Open a display directly with `?display=<address>`, for example
 `/signalk-espos-hmi/?display=salon`.
 
 A display can show another display's layout instead of its own: pick
@@ -63,13 +64,15 @@ routes below.
 
 Under `/plugins/signalk-espos-hmi`:
 
-| Route                       | Access | What                                                                     |
-| --------------------------- | ------ | ------------------------------------------------------------------------ |
-| `GET /displays`             | read   | The configured displays with their size and `layoutFrom`                 |
-| `GET /displays/:id/hello`   | read   | The same capability descriptor a panel serves                            |
-| `GET /displays/:id/layout`  | read   | The layout the display shows, or the starter                             |
-| `POST /displays/:id/layout` | admin  | Store a layout; answers like a panel's `POST /layout`, 409 on a follower |
-| `GET /displays/:id/events`  | read   | Server-sent `layout` events when the layout it shows changes             |
+| Route                       | Access | What                                                                                              |
+| --------------------------- | ------ | ------------------------------------------------------------------------------------------------- |
+| `GET /displays`             | read   | The configured displays with their size and `layoutFrom`                                          |
+| `GET /displays/:id/hello`   | read   | The same capability descriptor a panel serves                                                     |
+| `GET /displays/:id/layout`  | read   | The layout the display shows, or the starter                                                      |
+| `POST /displays/:id/layout` | admin  | Store a layout; answers like a panel's `POST /layout`, 409 on a follower                          |
+| `GET /settings`             | admin  | The displays as set up, and the screen sizes to choose from                                       |
+| `PUT /settings`             | admin  | Save the displays; open pages start again with them                                               |
+| `GET /displays/:id/events`  | read   | Server-sent `layout` events when the layout it shows changes, `settings` when the displays change |
 
 ## Develop
 

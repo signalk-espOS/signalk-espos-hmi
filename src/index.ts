@@ -5,10 +5,10 @@ import { readFileSync } from "node:fs";
 import {
   addressesMissing,
   applyDefaults,
-  buildSchema,
   parseSettings,
+  RESOLUTIONS,
   resolutionSize,
-  uiSchema,
+  schema,
   type DisplayProfile,
   type Settings,
 } from "./config.js";
@@ -92,6 +92,13 @@ export default function (app: ServerAPI): Plugin {
     }
   };
 
+  /** Tells every open page to start again: its display may be gone. */
+  const notifyAll = (): void => {
+    for (const set of listeners.values()) {
+      for (const res of set) send(res, "event: settings\ndata: {}\n\n");
+    }
+  };
+
   const showStatus = async (): Promise<void> => {
     const parts: string[] = [];
     for (const d of settings.displays) {
@@ -122,8 +129,7 @@ export default function (app: ServerAPI): Plugin {
     name: "espOS HMI",
     description:
       "Touchscreen helm display for layouts made in the espOS HMI designer",
-    schema: () => buildSchema(settings),
-    uiSchema: () => uiSchema,
+    schema: () => schema,
 
     start: (raw: unknown) => {
       const parsed = parseSettings(raw);
@@ -251,6 +257,36 @@ export default function (app: ServerAPI): Plugin {
           });
         },
       );
+
+      router.get("/settings", (_req: Request, res: Response) => {
+        res.json({ displays: settings.displays, resolutions: RESOLUTIONS });
+      });
+
+      router.put("/settings", (req: Request, res: Response) => {
+        const body: unknown = req.body;
+        if (
+          typeof body !== "object" ||
+          body === null ||
+          !Array.isArray((body as { displays?: unknown }).displays)
+        ) {
+          res.status(400).json({ ok: false, err: "displays missing" });
+          return;
+        }
+        const parsed = parseSettings(body);
+        app.savePluginOptions(parsed.toSave, (err) => {
+          if (err) {
+            app.error(`saving settings: ${err.message}`);
+            res
+              .status(500)
+              .json({ ok: false, err: "could not save the settings" });
+            return;
+          }
+          ({ settings, brokenLinks } = parsed);
+          notifyAll();
+          void showStatus();
+          res.json({ ok: true, displays: settings.displays });
+        });
+      });
 
       readable.get("/displays/:id/events", (req: Request, res: Response) => {
         const d = display(req.params.id);

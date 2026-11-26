@@ -3,9 +3,9 @@ import { describe, expect, it } from "vitest";
 import {
   addressesMissing,
   applyDefaults,
-  buildSchema,
   parseSettings,
   resolutionSize,
+  schema,
 } from "../src/config.js";
 
 describe("applyDefaults", () => {
@@ -133,27 +133,10 @@ describe("layoutFrom", () => {
   });
 });
 
-describe("buildSchema", () => {
-  it("requires nothing at the top level", () => {
-    expect("required" in buildSchema(applyDefaults({}))).toBe(false);
-  });
-
-  it("offers an own layout and every display to follow", () => {
-    const schema = buildSchema(
-      applyDefaults({
-        displays: [
-          { id: "helm", name: "Helm" },
-          { id: "salon", name: "Salon" },
-        ],
-      }),
-    );
-    expect(
-      schema.properties.displays.items.properties.layoutFrom.oneOf,
-    ).toEqual([
-      { const: "", title: "Its own layout" },
-      { const: "helm", title: "The layout of Helm" },
-      { const: "salon", title: "The layout of Salon" },
-    ]);
+describe("schema", () => {
+  it("has no fields, so the server form keeps what the page saved", () => {
+    expect("required" in schema).toBe(false);
+    expect(schema.properties).toEqual({});
   });
 });
 
