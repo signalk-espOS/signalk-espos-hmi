@@ -42,7 +42,10 @@ async function chooseDisplay(): Promise<DisplayInfo | null> {
   picker.replaceChildren(
     ...displays.map((d) => {
       const a = document.createElement("a");
-      a.href = `?display=${encodeURIComponent(d.id)}`;
+      // Keeps the rest of the address, so ?screen= reaches the display.
+      const query = new URLSearchParams(location.search);
+      query.set("display", d.id);
+      a.href = `?${query.toString()}`;
       a.textContent = `${d.name} · ${d.w} × ${d.h}`;
       return a;
     }),
