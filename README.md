@@ -24,15 +24,10 @@ its size. Open a display directly with `?display=<address>`, for example
 `/signalk-espos-hmi/?display=salon`.
 
 Add `&screen=<id>` to open on one of the layout's screens, for example a
-second monitor that always shows the tanks. This also needs a renderer with
-runtime mode; until the pin moves, a display shows the first screen and
-says so.
+second monitor that always shows the tanks.
 
 A display set to **show values only** never switches anything, whoever
 taps it.
-
-Touch needs a renderer that takes pointer input. Until the pin in
-`scripts/copy-wasm.sh` moves to one, every display shows values only.
 
 ## Hardware
 
