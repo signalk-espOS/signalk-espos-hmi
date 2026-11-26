@@ -74,7 +74,9 @@ npm run ci-lint
 ```
 
 `scripts/copy-wasm.sh` stages the renderer from a sibling
-`espos-p4-cockpit-wasm` checkout, or fetches the pinned commit.
+`espos-p4-cockpit-wasm` checkout, or fetches the pinned commit. Keep the
+sibling at or after that commit: an older bundle has no touch and shows
+only the first screen, whatever `?screen=` asks for.
 
 ## Licence
 
