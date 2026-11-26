@@ -1,0 +1,82 @@
+{
+  "name": "signalk-espos-hmi",
+  "version": "0.0.0",
+  "description": "Touchscreen HMI for Signal K: shows layouts from the espOS HMI designer in the browser with the same LVGL renderer the espOS panels use, so one design runs on the helm screen and on the panel.",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "public",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc && npm run build:webapp",
+    "build:webapp": "bash scripts/copy-wasm.sh && vite build",
+    "predev": "bash scripts/copy-wasm.sh",
+    "dev": "vite",
+    "test": "npm run typecheck:test && vitest run",
+    "typecheck": "tsc --noEmit && tsc --noEmit --project tsconfig.webapp.json",
+    "typecheck:test": "tsc --noEmit --project tsconfig.test.json",
+    "prettier": "prettier --write .",
+    "lint": "eslint --fix",
+    "format": "npm run prettier && npm run lint",
+    "ci-lint": "npm run typecheck && eslint && prettier --check .",
+    "prepublishOnly": "npm run build && npm test",
+    "test:integration": "node test/integration.ts"
+  },
+  "keywords": [
+    "signalk-node-server-plugin",
+    "signalk-webapp",
+    "signalk-category-utility",
+    "signalk-category-instruments",
+    "espos",
+    "hmi",
+    "digital-switching",
+    "touchscreen",
+    "lvgl"
+  ],
+  "author": "Dirk Wahrheit",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/signalk-espOS/signalk-espos-hmi.git"
+  },
+  "bugs": {
+    "url": "https://github.com/signalk-espOS/signalk-espos-hmi/issues"
+  },
+  "homepage": "https://github.com/signalk-espOS/signalk-espos-hmi#readme",
+  "signalk-plugin-enabled-by-default": true,
+  "signalk": {
+    "displayName": "espOS HMI",
+    "appIcon": "./icon.svg",
+    "webapp": {
+      "name": "espOS HMI",
+      "description": "Touchscreen helm display for layouts made in the espOS HMI designer"
+    },
+    "recommends": [
+      "signalk-espos-hmi-designer",
+      "signalk-espos-manager"
+    ]
+  },
+  "engines": {
+    "node": "^22.18.0 || >=24",
+    "signalk": ">=2.24.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@signalk/server-api": "^2.37.0",
+    "@types/express": "^5.0.6",
+    "@types/node": "^24.19.4",
+    "eslint": "^10.15.0",
+    "eslint-config-prettier": "^10.1.8",
+    "globals": "^17.14.0",
+    "jiti": "^2.7.0",
+    "prettier": "^3.10.1",
+    "typescript": "~6.0.3",
+    "typescript-eslint": "^8.74.0",
+    "vite": "^8.3.8",
+    "vitest": "^5.1.2"
+  }
+}
