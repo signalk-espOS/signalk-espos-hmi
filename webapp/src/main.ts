@@ -138,7 +138,11 @@ async function run(): Promise<void> {
   // event here.
   events.addEventListener("open", reload);
 
-  if (renderer.interactive && !display.readOnly) {
+  // A values-only display still turns pages; the renderer keeps its widgets
+  // from taking input. A bundle that cannot do that gets no touch at all.
+  const touch =
+    renderer.interactive && (!display.readOnly || renderer.setReadOnly(true));
+  if (touch) {
     const send = (ev: PointerEvent, pressed: boolean): void => {
       const p = toDisplay(box, display.w, display.h, ev.clientX, ev.clientY);
       if (p) renderer.pointer(p.x, p.y, pressed);

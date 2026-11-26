@@ -29,8 +29,8 @@ second monitor that starts on the tanks. A new layout opens on that screen
 again.
 
 A display set to **show values only** never switches anything, whoever
-taps it. It takes no touch at all, so it also stays on its screen: give it
-`screen=` to choose which one.
+taps it. Its tabs and swipes still change the screen; lists on it do not
+scroll.
 
 ## Hardware
 
