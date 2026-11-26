@@ -126,13 +126,17 @@ export default function (app: ServerAPI): Plugin {
     uiSchema: () => uiSchema,
 
     start: (raw: unknown) => {
-      ({ settings, brokenLinks } = parseSettings(raw));
+      const parsed = parseSettings(raw);
+      ({ settings, brokenLinks } = parsed);
       // Layouts are stored by address. One made from the name would move
       // with a rename and orphan the layout, so the first one made is kept.
       if (addressesMissing(raw, settings)) {
-        app.savePluginOptions({ ...(raw as object), ...settings }, (err) => {
-          if (err) app.error(`saving display addresses: ${err.message}`);
-        });
+        app.savePluginOptions(
+          { ...(raw as object), ...parsed.toSave },
+          (err) => {
+            if (err) app.error(`saving display addresses: ${err.message}`);
+          },
+        );
       }
       showStatus().catch((err: unknown) => {
         app.setPluginError(`status: ${(err as Error).message}`);

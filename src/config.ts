@@ -93,6 +93,11 @@ export interface Parsed {
   settings: Settings;
   /** Names of displays whose layoutFrom names no display or a loop. */
   brokenLinks: string[];
+  /**
+   * The settings to save: complete addresses, and each layoutFrom as the
+   * user picked it, so a chain still moves when a display in it changes.
+   */
+  toSave: Settings;
 }
 
 /** Whatever arrived, complete settings: at least one display, unique ids. */
@@ -164,7 +169,15 @@ function linkLayouts(displays: DisplayProfile[], links: string[]): Parsed {
     const source = o === null ? undefined : displays[o];
     return source && source.id !== d.id ? { ...d, layoutFrom: source.id } : d;
   });
-  return { settings: { displays: linked }, brokenLinks };
+  const toSave = displays.map((d, i) => {
+    const link = links[i] ?? "";
+    return link === "" ? d : { ...d, layoutFrom: link };
+  });
+  return {
+    settings: { displays: linked },
+    brokenLinks,
+    toSave: { displays: toSave },
+  };
 }
 
 /**

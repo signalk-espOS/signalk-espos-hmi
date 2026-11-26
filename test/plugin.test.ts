@@ -290,6 +290,34 @@ describe("plugin", () => {
       expect(events.written).toEqual([]);
     });
 
+    it("saves made-up addresses with the links as they were picked", async () => {
+      await plugin.stop();
+      await plugin.start(
+        {
+          displays: [
+            { id: "fly", name: "Fly" },
+            { id: "helm", name: "Helm", layoutFrom: "fly" },
+            { id: "salon", name: "Salon", layoutFrom: "helm" },
+            { name: "Nav", layoutFrom: "gone" },
+          ],
+        },
+        () => undefined,
+      );
+      const links = (
+        saved as { displays: { id: string; layoutFrom?: string }[] }
+      ).displays.map((d) => [d.id, d.layoutFrom]);
+      expect(links).toEqual([
+        ["fly", undefined],
+        ["helm", "fly"],
+        ["salon", "helm"],
+        ["nav", "gone"],
+      ]);
+      const listed = await call("readonly GET /displays", req({}));
+      expect(listed.body).toMatchObject({
+        displays: [{}, {}, { id: "salon", layoutFrom: "fly" }, { id: "nav" }],
+      });
+    });
+
     it("reports a follower whose source is gone", async () => {
       await plugin.stop();
       await plugin.start(
