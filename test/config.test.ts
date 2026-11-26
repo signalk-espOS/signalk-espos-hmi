@@ -3,8 +3,9 @@ import { describe, expect, it } from "vitest";
 import {
   addressesMissing,
   applyDefaults,
+  buildSchema,
+  parseSettings,
   resolutionSize,
-  schema,
 } from "../src/config.js";
 
 describe("applyDefaults", () => {
@@ -68,9 +69,91 @@ describe("resolutionSize", () => {
   });
 });
 
-describe("schema", () => {
+describe("layoutFrom", () => {
+  const ids = (raw: unknown) =>
+    applyDefaults(raw).displays.map((d) => [d.id, d.layoutFrom]);
+
+  it("points a follower at the display it names", () => {
+    expect(
+      ids({
+        displays: [
+          { id: "helm", name: "Helm" },
+          { id: "salon", name: "Salon", layoutFrom: "Helm " },
+        ],
+      }),
+    ).toEqual([
+      ["helm", undefined],
+      ["salon", "helm"],
+    ]);
+  });
+
+  it("resolves a chain to the display at its end", () => {
+    expect(
+      ids({
+        displays: [
+          { id: "fly", name: "Fly" },
+          { id: "helm", name: "Helm", layoutFrom: "fly" },
+          { id: "salon", name: "Salon", layoutFrom: "helm" },
+        ],
+      }),
+    ).toEqual([
+      ["fly", undefined],
+      ["helm", "fly"],
+      ["salon", "fly"],
+    ]);
+  });
+
+  it("treats empty and self links as an own layout", () => {
+    const { settings, brokenLinks } = parseSettings({
+      displays: [
+        { id: "helm", name: "Helm", layoutFrom: "" },
+        { id: "salon", name: "Salon", layoutFrom: "salon" },
+      ],
+    });
+    expect(settings.displays.every((d) => !("layoutFrom" in d))).toBe(true);
+    expect(brokenLinks).toEqual([]);
+  });
+
+  it("gives unknown displays and loops their own layout and reports them", () => {
+    const { settings, brokenLinks } = parseSettings({
+      displays: [
+        { id: "a", name: "A", layoutFrom: "b" },
+        { id: "b", name: "B", layoutFrom: "a" },
+        { id: "c", name: "C", layoutFrom: "gone" },
+        { id: "d", name: "D", layoutFrom: "c" },
+      ],
+    });
+    expect(settings.displays.map((d) => d.layoutFrom)).toEqual([
+      undefined,
+      undefined,
+      undefined,
+      "c",
+    ]);
+    expect(brokenLinks).toEqual(["A", "B", "C"]);
+  });
+});
+
+describe("buildSchema", () => {
   it("requires nothing at the top level", () => {
-    expect("required" in schema).toBe(false);
+    expect("required" in buildSchema(applyDefaults({}))).toBe(false);
+  });
+
+  it("offers an own layout and every display to follow", () => {
+    const schema = buildSchema(
+      applyDefaults({
+        displays: [
+          { id: "helm", name: "Helm" },
+          { id: "salon", name: "Salon" },
+        ],
+      }),
+    );
+    expect(
+      schema.properties.displays.items.properties.layoutFrom.oneOf,
+    ).toEqual([
+      { const: "", title: "Its own layout" },
+      { const: "helm", title: "The layout of Helm" },
+      { const: "salon", title: "The layout of Salon" },
+    ]);
   });
 });
 

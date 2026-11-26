@@ -23,6 +23,11 @@ More screens: add a display per screen in the plugin settings, each with
 its size. Open a display directly with `?display=<address>`, for example
 `/signalk-espos-hmi/?display=salon`.
 
+A display can show another display's layout instead of its own: pick
+that display under **Layout**. A push to it then reaches every display
+that follows it, each letterboxed to its own size, and the designer
+cannot push to a follower on its own.
+
 Add `screen=<id>` to the address to open on one of the layout's screens
 (`?screen=tanks`, or `?display=salon&screen=tanks`), for example a
 second monitor that starts on the tanks. A new layout opens on that screen
@@ -58,13 +63,13 @@ routes below.
 
 Under `/plugins/signalk-espos-hmi`:
 
-| Route                       | Access | What                                                  |
-| --------------------------- | ------ | ----------------------------------------------------- |
-| `GET /displays`             | read   | The configured displays with their size               |
-| `GET /displays/:id/hello`   | read   | The same capability descriptor a panel serves         |
-| `GET /displays/:id/layout`  | read   | The display's layout, or the starter                  |
-| `POST /displays/:id/layout` | admin  | Store a layout; answers like a panel's `POST /layout` |
-| `GET /displays/:id/events`  | read   | Server-sent `layout` events when a new layout arrives |
+| Route                       | Access | What                                                                     |
+| --------------------------- | ------ | ------------------------------------------------------------------------ |
+| `GET /displays`             | read   | The configured displays with their size and `layoutFrom`                 |
+| `GET /displays/:id/hello`   | read   | The same capability descriptor a panel serves                            |
+| `GET /displays/:id/layout`  | read   | The layout the display shows, or the starter                             |
+| `POST /displays/:id/layout` | admin  | Store a layout; answers like a panel's `POST /layout`, 409 on a follower |
+| `GET /displays/:id/events`  | read   | Server-sent `layout` events when the layout it shows changes             |
 
 ## Develop
 

@@ -201,4 +201,103 @@ describe("plugin", () => {
     res = await call("readonly GET /displays/:id/layout", req({ id: "nope" }));
     expect(res.statusCode).toBe(404);
   });
+
+  describe("a display following another", () => {
+    const layout = {
+      schema: 1,
+      name: "Shared",
+      screens: [{ id: "a", widgets: [] }],
+    };
+
+    beforeEach(async () => {
+      await plugin.stop();
+      await plugin.start(
+        {
+          displays: [
+            { id: "helm", name: "Helm" },
+            {
+              id: "salon",
+              name: "Salon",
+              resolution: "1280x800",
+              layoutFrom: "helm",
+            },
+          ],
+        },
+        () => undefined,
+      );
+    });
+
+    it("is listed with its source and its own size", async () => {
+      const res = await call("readonly GET /displays", req({}));
+      expect(res.body).toMatchObject({
+        displays: [
+          { id: "helm", w: 1920, h: 1080 },
+          { id: "salon", layoutFrom: "helm", w: 1280, h: 800 },
+        ],
+      });
+      expect(
+        (res.body as { displays: object[] }).displays[0],
+      ).not.toHaveProperty("layoutFrom");
+    });
+
+    it("shows the source's layout and reloads when it changes", async () => {
+      const salonEvents = await call(
+        "readonly GET /displays/:id/events",
+        req({ id: "salon" }),
+      );
+      const res = await call(
+        "admin POST /displays/:id/layout",
+        req({ id: "helm" }, layout),
+      );
+      expect(res.body).toMatchObject({ ok: true });
+      expect(salonEvents.written.join("")).toContain("event: layout");
+
+      const shown = await call(
+        "readonly GET /displays/:id/layout",
+        req({ id: "salon" }),
+      );
+      expect(shown.headers["X-Layout-Source"]).toBe("stored");
+      expect(shown.body).toEqual(layout);
+
+      const hello = await call(
+        "readonly GET /displays/:id/hello",
+        req({ id: "salon" }),
+      );
+      expect(hello.body).toMatchObject({
+        name: "Shared",
+        hostname: "Salon",
+        display: { w: 1280, h: 800 },
+      });
+      await new Promise((r) => setTimeout(r, 20));
+      expect(status).toContain("Salon (1280×800, shows Helm)");
+    });
+
+    it("refuses a push of its own and names the source", async () => {
+      const events = await call(
+        "readonly GET /displays/:id/events",
+        req({ id: "salon" }),
+      );
+      const res = await call(
+        "admin POST /displays/:id/layout",
+        req({ id: "salon" }, layout),
+      );
+      expect(res.statusCode).toBe(409);
+      expect(res.body).toEqual({
+        ok: false,
+        err: "Salon shows Helm's layout",
+        layoutFrom: "helm",
+      });
+      expect(events.written).toEqual([]);
+    });
+
+    it("reports a follower whose source is gone", async () => {
+      await plugin.stop();
+      await plugin.start(
+        { displays: [{ id: "salon", name: "Salon", layoutFrom: "helm" }] },
+        () => undefined,
+      );
+      await new Promise((r) => setTimeout(r, 20));
+      expect(status).toContain("Salon: the display to follow is gone");
+    });
+  });
 });

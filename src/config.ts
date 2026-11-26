@@ -21,6 +21,11 @@ export interface DisplayProfile {
   resolution: ResolutionId;
   /** Shows values but never switches anything, whoever taps it. */
   readOnly: boolean;
+  /**
+   * The display whose layout this one shows. Never a follower itself:
+   * chains are resolved to the display at their end.
+   */
+  layoutFrom?: string;
 }
 
 export interface Settings {
@@ -58,7 +63,7 @@ function slug(s: string): string {
 function asDisplay(
   raw: unknown,
   index: number,
-): { display: DisplayProfile; explicit: boolean } | null {
+): { display: DisplayProfile; explicit: boolean; link: string } | null {
   if (typeof raw !== "object" || raw === null) return null;
   const r = raw as Record<string, unknown>;
   const name =
@@ -79,11 +84,23 @@ function asDisplay(
       readOnly: r.readOnly === true,
     },
     explicit,
+    link:
+      typeof r.layoutFrom === "string" ? r.layoutFrom.trim().toLowerCase() : "",
   };
+}
+
+export interface Parsed {
+  settings: Settings;
+  /** Names of displays whose layoutFrom names no display or a loop. */
+  brokenLinks: string[];
 }
 
 /** Whatever arrived, complete settings: at least one display, unique ids. */
 export function applyDefaults(raw: unknown): Settings {
+  return parseSettings(raw).settings;
+}
+
+export function parseSettings(raw: unknown): Parsed {
   const list =
     typeof raw === "object" &&
     raw !== null &&
@@ -100,6 +117,7 @@ export function applyDefaults(raw: unknown): Settings {
     return p.display.id;
   });
   const displays: DisplayProfile[] = [];
+  const links: string[] = [];
   parsed.forEach((p, i) => {
     if (!p) return;
     let id = ids[i] ?? null;
@@ -113,9 +131,40 @@ export function applyDefaults(raw: unknown): Settings {
       seen.add(id);
     }
     displays.push({ ...p.display, id });
+    links.push(p.link);
   });
   if (displays.length === 0) displays.push({ ...DEFAULT_DISPLAY });
-  return { displays };
+  return linkLayouts(displays, links);
+}
+
+/**
+ * Points each follower straight at the display that owns the layout, so
+ * readers of /displays never walk a chain. A link to an unknown display or
+ * into a loop leaves the display with its own layout.
+ */
+function linkLayouts(displays: DisplayProfile[], links: string[]): Parsed {
+  const index = new Map(displays.map((d, i) => [d.id, i]));
+  const brokenLinks: string[] = [];
+  const owner = (start: number): number | null => {
+    const seen = new Set([start]);
+    let at = start;
+    for (;;) {
+      const link = links[at] ?? "";
+      if (link === "" || link === displays[at]?.id) return at;
+      const next = index.get(link);
+      if (next === undefined) return at === start ? null : at;
+      if (seen.has(next)) return null;
+      seen.add(next);
+      at = next;
+    }
+  };
+  const linked = displays.map((d, i) => {
+    const o = owner(i);
+    if (o === null) brokenLinks.push(d.name);
+    const source = o === null ? undefined : displays[o];
+    return source && source.id !== d.id ? { ...d, layoutFrom: source.id } : d;
+  });
+  return { settings: { displays: linked }, brokenLinks };
 }
 
 /**
@@ -133,52 +182,72 @@ export function addressesMissing(raw: unknown, settings: Settings): boolean {
   );
 }
 
-export const schema = {
-  type: "object",
-  properties: {
-    displays: {
-      type: "array",
-      title: "Displays",
-      description:
-        "One entry per screen that shows the HMI. Each has its own layout; push one from the espOS HMI designer.",
-      default: [DEFAULT_DISPLAY],
-      items: {
-        type: "object",
-        required: ["name"],
-        properties: {
-          name: {
-            type: "string",
-            title: "Name",
-            default: DEFAULT_DISPLAY.name,
-          },
-          id: {
-            type: "string",
-            title: "Address",
-            description:
-              "Short name in the display's web address (?display=…). Left empty, it is made from the name.",
-            pattern: "^([a-z0-9][a-z0-9-]{0,31})?$",
-          },
-          resolution: {
-            type: "string",
-            title: "Screen size",
-            default: DEFAULT_DISPLAY.resolution,
-            oneOf: RESOLUTIONS.map((r) => ({ const: r.id, title: r.title })),
-          },
-          readOnly: {
-            type: "boolean",
-            title: "Show values only, never switch anything",
-            default: false,
+/**
+ * The settings form. The layout picker lists the displays as last saved,
+ * so a display added in the same edit shows up there after saving.
+ */
+export function buildSchema(settings: Settings) {
+  return {
+    type: "object",
+    properties: {
+      displays: {
+        type: "array",
+        title: "Displays",
+        description:
+          "One entry per screen that shows the HMI. Each has its own layout, pushed from the espOS HMI designer, or shows another display's.",
+        default: [DEFAULT_DISPLAY],
+        items: {
+          type: "object",
+          required: ["name"],
+          properties: {
+            name: {
+              type: "string",
+              title: "Name",
+              default: DEFAULT_DISPLAY.name,
+            },
+            id: {
+              type: "string",
+              title: "Address",
+              description:
+                "Short name in the display's web address (?display=…). Left empty, it is made from the name.",
+              pattern: "^([a-z0-9][a-z0-9-]{0,31})?$",
+            },
+            resolution: {
+              type: "string",
+              title: "Screen size",
+              default: DEFAULT_DISPLAY.resolution,
+              oneOf: RESOLUTIONS.map((r) => ({ const: r.id, title: r.title })),
+            },
+            readOnly: {
+              type: "boolean",
+              title: "Show values only, never switch anything",
+              default: false,
+            },
+            layoutFrom: {
+              type: "string",
+              title: "Layout",
+              description:
+                "Show another display's layout: a push to that display reaches this one too.",
+              default: "",
+              oneOf: [
+                { const: "", title: "Its own layout" },
+                ...settings.displays.map((d) => ({
+                  const: d.id,
+                  title: `The layout of ${d.name}`,
+                })),
+              ],
+            },
           },
         },
       },
     },
-  },
-} as const;
+  } as const;
+}
 
 export const uiSchema = {
   displays: {
     items: {
-      "ui:order": ["name", "resolution", "readOnly", "id"],
+      "ui:order": ["name", "resolution", "layoutFrom", "readOnly", "id"],
       id: { "ui:placeholder": "helm" },
     },
   },
