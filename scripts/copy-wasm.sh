@@ -19,7 +19,7 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 SRC="${JLP_WASM_DIR:-${REPO_ROOT}/../espos-p4-cockpit-wasm/public}"
 DEST="${REPO_ROOT}/webapp/public/wasm"
-JLP_WASM_REF="${JLP_WASM_REF:-123b971634f2639df1e7aaa3052ca7c7cb6b4e30}"
+JLP_WASM_REF="${JLP_WASM_REF:-5d0ceec27fca2be97f6ffef0ac3f844e810e5f83}"
 RAW_BASE="${JLP_WASM_URL:-https://raw.githubusercontent.com/dirkwa/espos-p4-cockpit-wasm/${JLP_WASM_REF}/public}"
 
 flag="$(printf '%s' "${REQUIRE_WASM:-}" | tr '[:upper:]' '[:lower:]')"

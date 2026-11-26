@@ -23,16 +23,14 @@ More screens: add a display per screen in the plugin settings, each with
 its size. Open a display directly with `?display=<address>`, for example
 `/signalk-espos-hmi/?display=salon`.
 
-Add `&screen=<id>` to open on one of the layout's screens, for example a
-second monitor that always shows the tanks. This also needs a renderer with
-runtime mode; until the pin moves, a display shows the first screen and
-says so.
+Add `screen=<id>` to the address to open on one of the layout's screens
+(`?screen=tanks`, or `?display=salon&screen=tanks`), for example a
+second monitor that starts on the tanks. A new layout opens on that screen
+again.
 
 A display set to **show values only** never switches anything, whoever
-taps it.
-
-Touch needs a renderer that takes pointer input. Until the pin in
-`scripts/copy-wasm.sh` moves to one, every display shows values only.
+taps it. Its tabs and swipes still change the screen; lists on it do not
+scroll.
 
 ## Hardware
 
@@ -79,7 +77,9 @@ npm run ci-lint
 ```
 
 `scripts/copy-wasm.sh` stages the renderer from a sibling
-`espos-p4-cockpit-wasm` checkout, or fetches the pinned commit.
+`espos-p4-cockpit-wasm` checkout, or fetches the pinned commit. Keep the
+sibling at or after that commit: an older bundle has no touch and shows
+only the first screen, whatever `?screen=` asks for.
 
 ## Licence
 

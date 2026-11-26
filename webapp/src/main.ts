@@ -42,7 +42,10 @@ async function chooseDisplay(): Promise<DisplayInfo | null> {
   picker.replaceChildren(
     ...displays.map((d) => {
       const a = document.createElement("a");
-      a.href = `?display=${encodeURIComponent(d.id)}`;
+      // Keeps the rest of the address, so ?screen= reaches the display.
+      const query = new URLSearchParams(location.search);
+      query.set("display", d.id);
+      a.href = `?${query.toString()}`;
       a.textContent = `${d.name} · ${d.w} × ${d.h}`;
       return a;
     }),
@@ -135,7 +138,11 @@ async function run(): Promise<void> {
   // event here.
   events.addEventListener("open", reload);
 
-  if (renderer.interactive && !display.readOnly) {
+  // A values-only display still turns pages; the renderer keeps its widgets
+  // from taking input. A bundle that cannot do that gets no touch at all.
+  const touch =
+    renderer.interactive && (!display.readOnly || renderer.setReadOnly(true));
+  if (touch) {
     const send = (ev: PointerEvent, pressed: boolean): void => {
       const p = toDisplay(box, display.w, display.h, ev.clientX, ev.clientY);
       if (p) renderer.pointer(p.x, p.y, pressed);

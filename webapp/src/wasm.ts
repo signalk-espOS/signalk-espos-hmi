@@ -23,6 +23,7 @@ interface JlpModule {
   _jlp_set_notifications(json: number): void;
   _jlp_set_theme?(mode: number): number;
   _jlp_pointer?(x: number, y: number, pressed: number): void;
+  _jlp_set_read_only?(on: number): number;
   _malloc(n: number): number;
   _free(p: number): void;
   stringToUTF8(s: string, ptr: number, max: number): void;
@@ -103,6 +104,15 @@ export class Renderer {
       this.mod.UTF8ToString(run ? run(p) : this.mod._jlp_apply_layout(p)),
     );
     return err === "" ? null : err;
+  }
+
+  /**
+   * Values only: tabs and swipes still change the screen, no widget takes
+   * input. False when the bundle cannot do it.
+   */
+  setReadOnly(on: boolean): boolean {
+    const fn = this.mod._jlp_set_read_only?.bind(this.mod);
+    return fn ? fn(on ? 1 : 0) === 1 : false;
   }
 
   /** Shows the screen with this id, as a tap on its tab would. */
