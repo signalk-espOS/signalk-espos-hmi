@@ -86,3 +86,130 @@ body {
 #notice[hidden] {
   display: none;
 }
+
+#picker a.settings-link {
+  min-height: 48px;
+  background: none;
+  color: var(--muted);
+  font-size: 18px;
+}
+
+/* The settings page scrolls, and its name fields take text. */
+#settings {
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  touch-action: pan-y;
+  padding: 24px 16px 48px;
+  box-sizing: border-box;
+}
+
+#settings[hidden] {
+  display: none;
+}
+
+#settings > * {
+  max-width: 720px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+#settings h1 {
+  font-size: 26px;
+  margin-top: 0;
+}
+
+#settings .display {
+  margin-bottom: 20px;
+  padding: 16px;
+  border-radius: 12px;
+  background: var(--tile);
+}
+
+#settings input {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 52px;
+  padding: 0 14px;
+  border: 1px solid var(--tile-active);
+  border-radius: 10px;
+  background: var(--bg);
+  color: var(--fg);
+  font: inherit;
+  font-size: 22px;
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+#settings .muted {
+  color: var(--muted);
+}
+
+#settings .chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 16px 0 0;
+  padding: 0;
+  border: none;
+}
+
+#settings .chips legend {
+  margin-bottom: 8px;
+  color: var(--muted);
+}
+
+#settings button,
+#settings a.action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  min-width: 48px;
+  padding: 0 18px;
+  border: 2px solid transparent;
+  border-radius: 10px;
+  background: var(--tile-active);
+  color: var(--fg);
+  font: inherit;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+#settings button[aria-pressed="true"],
+#settings button.primary {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+#settings button.remove {
+  margin-top: 16px;
+  color: #ff8a80;
+}
+
+#settings button:focus-visible,
+#settings a.action:focus-visible {
+  outline: 2px solid var(--accent);
+}
+
+#settings .bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+#settings a.action {
+  margin-right: 12px;
+}
+
+#settings fieldset.form {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: none;
+}
+
+#settings fieldset.form:disabled {
+  opacity: 0.6;
+}

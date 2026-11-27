@@ -196,72 +196,13 @@ export function addressesMissing(raw: unknown, settings: Settings): boolean {
 }
 
 /**
- * The settings form. The layout picker lists the displays as last saved,
- * so a display added in the same edit shows up there after saving.
+ * The settings live on the HMI page. The server's form only points there;
+ * it keeps the saved displays, as it does not drop data it has no field
+ * for.
  */
-export function buildSchema(settings: Settings) {
-  return {
-    type: "object",
-    properties: {
-      displays: {
-        type: "array",
-        title: "Displays",
-        description:
-          "One entry per screen that shows the HMI. Each has its own layout, pushed from the espOS HMI designer, or shows another display's.",
-        default: [DEFAULT_DISPLAY],
-        items: {
-          type: "object",
-          required: ["name"],
-          properties: {
-            name: {
-              type: "string",
-              title: "Name",
-              default: DEFAULT_DISPLAY.name,
-            },
-            id: {
-              type: "string",
-              title: "Address",
-              description:
-                "Short name in the display's web address (?display=…). Left empty, it is made from the name.",
-              pattern: "^([a-z0-9][a-z0-9-]{0,31})?$",
-            },
-            resolution: {
-              type: "string",
-              title: "Screen size",
-              default: DEFAULT_DISPLAY.resolution,
-              oneOf: RESOLUTIONS.map((r) => ({ const: r.id, title: r.title })),
-            },
-            readOnly: {
-              type: "boolean",
-              title: "Show values only, never switch anything",
-              default: false,
-            },
-            layoutFrom: {
-              type: "string",
-              title: "Layout",
-              description:
-                "Show another display's layout: a push to that display reaches this one too.",
-              default: "",
-              oneOf: [
-                { const: "", title: "Its own layout" },
-                ...settings.displays.map((d) => ({
-                  const: d.id,
-                  title: `The layout of ${d.name}`,
-                })),
-              ],
-            },
-          },
-        },
-      },
-    },
-  } as const;
-}
-
-export const uiSchema = {
-  displays: {
-    items: {
-      "ui:order": ["name", "resolution", "layoutFrom", "readOnly", "id"],
-      id: { "ui:placeholder": "helm" },
-    },
-  },
+export const schema = {
+  type: "object",
+  description:
+    "Displays are set up on the HMI page: open Webapps → espOS HMI and tap Settings, or go to /signalk-espos-hmi/?settings.",
+  properties: {},
 } as const;

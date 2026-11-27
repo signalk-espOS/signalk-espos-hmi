@@ -52,6 +52,7 @@ function fakeRouter(routes: Map<string, Handler>): PluginRouter {
   const make = (access: string) => ({
     get: (p: string, h: Handler) => routes.set(`${access} GET ${p}`, h),
     post: (p: string, h: Handler) => routes.set(`${access} POST ${p}`, h),
+    put: (p: string, h: Handler) => routes.set(`${access} PUT ${p}`, h),
   });
   return {
     ...make("admin"),
@@ -326,6 +327,70 @@ describe("plugin", () => {
       );
       await new Promise((r) => setTimeout(r, 20));
       expect(status).toContain("Salon: the display to follow is gone");
+    });
+  });
+
+  describe("settings from the page", () => {
+    it("are for the admin only", () => {
+      expect(routes.has("admin GET /settings")).toBe(true);
+      expect(routes.has("admin PUT /settings")).toBe(true);
+      expect(routes.has("readonly GET /settings")).toBe(false);
+      expect(routes.has("readonly PUT /settings")).toBe(false);
+    });
+
+    it("lists the displays and the screen sizes", async () => {
+      const res = await call("admin GET /settings", req({}));
+      const body = res.body as { displays: unknown[]; resolutions: unknown[] };
+      expect(body.displays).toEqual([
+        { id: "helm", name: "Helm", resolution: "1920x1080", readOnly: false },
+      ]);
+      expect(body.resolutions).toContainEqual({
+        id: "1280x800",
+        title: expect.any(String),
+      });
+    });
+
+    it("saves, applies at once and restarts open pages", async () => {
+      const events = await call(
+        "readonly GET /displays/:id/events",
+        req({ id: "helm" }),
+      );
+      const res = await call(
+        "admin PUT /settings",
+        req(
+          {},
+          {
+            displays: [
+              { id: "helm", name: "Helm" },
+              { name: "Salon", resolution: "1280x800", layoutFrom: "helm" },
+            ],
+          },
+        ),
+      );
+      const displays = [
+        { id: "helm", name: "Helm", resolution: "1920x1080", readOnly: false },
+        {
+          id: "salon",
+          name: "Salon",
+          resolution: "1280x800",
+          readOnly: false,
+          layoutFrom: "helm",
+        },
+      ];
+      expect(res.body).toEqual({ ok: true, displays });
+      expect(saved).toEqual({ displays });
+      expect(events.written.join("")).toContain("event: settings");
+
+      const listed = await call("readonly GET /displays", req({}));
+      expect(listed.body).toMatchObject({
+        displays: [{ id: "helm" }, { id: "salon", layoutFrom: "helm" }],
+      });
+    });
+
+    it("refuses a body without displays", async () => {
+      const res = await call("admin PUT /settings", req({}, { foo: 1 }));
+      expect(res.statusCode).toBe(400);
+      expect(saved).toBeUndefined();
     });
   });
 });

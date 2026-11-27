@@ -8,7 +8,8 @@ and wires the renderer to Signal K.
 ## Layout
 
 - `src/index.ts`: plugin, routes, layout push and the SSE reload.
-- `src/config.ts`: settings, `applyDefaults`, JSON schema.
+- `src/config.ts`: settings, `applyDefaults`, layout links; the server form only points to the page.
+- `webapp/src/settings.ts`: the settings page (`?settings`); its rules are in `settings-model.ts`.
 - `src/layout.ts`: the layout envelope check and `boundPaths`; shared with
   the webapp, so it may not use Node.
 - `src/starter.ts`: the layout a display shows before a push.

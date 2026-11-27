@@ -2,6 +2,7 @@ import "./style.css";
 
 import { boundPaths, type Layout } from "../../src/layout.js";
 import { fitBox, toDisplay, type Box } from "./fit.js";
+import { runSettings } from "./settings.js";
 import { SkClient } from "./signalk.js";
 import { Renderer } from "./wasm.js";
 
@@ -18,6 +19,7 @@ interface DisplayInfo {
 const canvas = document.getElementById("canvas") as HTMLCanvasElement;
 const notice = document.getElementById("notice") as HTMLDivElement;
 const picker = document.getElementById("picker") as HTMLDivElement;
+const settingsRoot = document.getElementById("settings") as HTMLElement;
 
 function say(text: string | null): void {
   notice.textContent = text ?? "";
@@ -48,6 +50,11 @@ async function chooseDisplay(): Promise<DisplayInfo | null> {
       a.href = `?${query.toString()}`;
       a.textContent = `${d.name} · ${d.w} × ${d.h}`;
       return a;
+    }),
+    Object.assign(document.createElement("a"), {
+      href: "?settings",
+      className: "settings-link",
+      textContent: "Settings",
     }),
   );
   picker.hidden = false;
@@ -134,9 +141,32 @@ async function run(): Promise<void> {
     show().catch((err: unknown) => say((err as Error).message));
   };
   events.addEventListener("layout", reload);
-  // A push made before the stream opened, or while it was down, sent no
-  // event here.
-  events.addEventListener("open", reload);
+  // The displays were set up anew: this one may be gone, resized or
+  // following another.
+  events.addEventListener("settings", () => location.reload());
+  // A push or a save made before the stream opened, or while it was down,
+  // sent no event here. Size and switching are fixed when the page starts,
+  // so a change to them needs a fresh start; the layout is fetched anew.
+  const recheck = async (): Promise<void> => {
+    const { displays } = await json<{ displays: DisplayInfo[] }>(
+      `${PLUGIN}/displays`,
+    );
+    const now = displays.find((d) => d.id === display.id);
+    if (
+      !now ||
+      now.w !== display.w ||
+      now.h !== display.h ||
+      now.readOnly !== display.readOnly
+    ) {
+      location.reload();
+      return;
+    }
+    document.title = `${now.name} · espOS HMI`;
+    await show();
+  };
+  events.addEventListener("open", () => {
+    recheck().catch((err: unknown) => say((err as Error).message));
+  });
 
   // A values-only display still turns pages; the renderer keeps its widgets
   // from taking input. A bundle that cannot do that gets no touch at all.
@@ -172,4 +202,7 @@ async function run(): Promise<void> {
   void keepAwake();
 }
 
-run().catch((err: unknown) => say((err as Error).message));
+const start = new URLSearchParams(location.search).has("settings")
+  ? runSettings(settingsRoot)
+  : run();
+start.catch((err: unknown) => say((err as Error).message));
