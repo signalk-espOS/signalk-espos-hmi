@@ -144,9 +144,29 @@ async function run(): Promise<void> {
   // The displays were set up anew: this one may be gone, resized or
   // following another.
   events.addEventListener("settings", () => location.reload());
-  // A push made before the stream opened, or while it was down, sent no
-  // event here.
-  events.addEventListener("open", reload);
+  // A push or a save made before the stream opened, or while it was down,
+  // sent no event here. Size and switching are fixed when the page starts,
+  // so a change to them needs a fresh start; the layout is fetched anew.
+  const recheck = async (): Promise<void> => {
+    const { displays } = await json<{ displays: DisplayInfo[] }>(
+      `${PLUGIN}/displays`,
+    );
+    const now = displays.find((d) => d.id === display.id);
+    if (
+      !now ||
+      now.w !== display.w ||
+      now.h !== display.h ||
+      now.readOnly !== display.readOnly
+    ) {
+      location.reload();
+      return;
+    }
+    document.title = `${now.name} · espOS HMI`;
+    await show();
+  };
+  events.addEventListener("open", () => {
+    recheck().catch((err: unknown) => say((err as Error).message));
+  });
 
   // A values-only display still turns pages; the renderer keeps its widgets
   // from taking input. A bundle that cannot do that gets no touch at all.
