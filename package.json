@@ -1,6 +1,6 @@
 {
   "name": "signalk-espos-hmi",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Touchscreen HMI for Signal K: shows layouts from the espOS HMI designer in the browser with the same LVGL renderer the espOS panels use, so one design runs on the helm screen and on the panel.",
   "type": "module",
   "main": "dist/index.js",
