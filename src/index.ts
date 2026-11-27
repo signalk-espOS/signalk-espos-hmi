@@ -5,8 +5,9 @@ import { readFileSync } from "node:fs";
 import {
   addressesMissing,
   applyDefaults,
+  buildSchema,
+  parseSettings,
   resolutionSize,
-  schema,
   uiSchema,
   type DisplayProfile,
   type Settings,
@@ -37,6 +38,7 @@ interface Resolved {
 export default function (app: ServerAPI): Plugin {
   const version = packageVersion();
   let settings: Settings = applyDefaults({});
+  let brokenLinks: string[] = [];
   let store: LayoutStore | null = null;
   // Open webapp pages per display, told when a new layout arrives.
   const listeners = new Map<string, Set<Response>>();
@@ -44,12 +46,17 @@ export default function (app: ServerAPI): Plugin {
   const display = (id: unknown): DisplayProfile | undefined =>
     settings.displays.find((d) => d.id === id);
 
+  /** The display whose layout `d` shows: itself, or the one it follows. */
+  const owner = (d: DisplayProfile): DisplayProfile =>
+    (d.layoutFrom === undefined ? undefined : display(d.layoutFrom)) ?? d;
+
   const layoutStore = (): LayoutStore => {
     store ??= new LayoutStore(app.getDataDirPath());
     return store;
   };
 
-  const resolve = async (d: DisplayProfile): Promise<Resolved> => {
+  const resolve = async (shown: DisplayProfile): Promise<Resolved> => {
+    const d = owner(shown);
     const stored = await layoutStore().read(d.id);
     if (stored) return { layout: stored, source: "stored" };
     const { w, h } = resolutionSize(d.resolution);
@@ -75,23 +82,37 @@ export default function (app: ServerAPI): Plugin {
     (res as Response & { flush?: () => void }).flush?.();
   };
 
-  const notify = (displayId: string, name: string): void => {
-    for (const res of listeners.get(displayId) ?? []) {
-      send(res, `event: layout\ndata: ${JSON.stringify({ name })}\n\n`);
+  /** Tells the pages of `source` and of every display following it. */
+  const notify = (source: DisplayProfile, name: string): void => {
+    for (const d of settings.displays) {
+      if (owner(d).id !== source.id) continue;
+      for (const res of listeners.get(d.id) ?? []) {
+        send(res, `event: layout\ndata: ${JSON.stringify({ name })}\n\n`);
+      }
     }
   };
 
   const showStatus = async (): Promise<void> => {
     const parts: string[] = [];
     for (const d of settings.displays) {
-      let source = "starter layout";
-      try {
-        if (await layoutStore().read(d.id)) source = "own layout";
-      } catch {
-        source = "layout unreadable";
-      }
       const { w, h } = resolutionSize(d.resolution);
-      parts.push(`${d.name} (${w}×${h}, ${source})`);
+      const source = owner(d);
+      if (source.id !== d.id) {
+        parts.push(`${d.name} (${w}×${h}, shows ${source.name})`);
+        continue;
+      }
+      let state = "starter layout";
+      try {
+        if (await layoutStore().read(d.id)) state = "own layout";
+      } catch {
+        state = "layout unreadable";
+      }
+      parts.push(`${d.name} (${w}×${h}, ${state})`);
+    }
+    if (brokenLinks.length > 0) {
+      parts.push(
+        `${brokenLinks.join(", ")}: the display to follow is gone, own layout shown`,
+      );
     }
     app.setPluginStatus(parts.join("; "));
   };
@@ -101,17 +122,21 @@ export default function (app: ServerAPI): Plugin {
     name: "espOS HMI",
     description:
       "Touchscreen helm display for layouts made in the espOS HMI designer",
-    schema: () => schema,
+    schema: () => buildSchema(settings),
     uiSchema: () => uiSchema,
 
     start: (raw: unknown) => {
-      settings = applyDefaults(raw);
+      const parsed = parseSettings(raw);
+      ({ settings, brokenLinks } = parsed);
       // Layouts are stored by address. One made from the name would move
       // with a rename and orphan the layout, so the first one made is kept.
       if (addressesMissing(raw, settings)) {
-        app.savePluginOptions({ ...(raw as object), ...settings }, (err) => {
-          if (err) app.error(`saving display addresses: ${err.message}`);
-        });
+        app.savePluginOptions(
+          { ...(raw as object), ...parsed.toSave },
+          (err) => {
+            if (err) app.error(`saving display addresses: ${err.message}`);
+          },
+        );
       }
       showStatus().catch((err: unknown) => {
         app.setPluginError(`status: ${(err as Error).message}`);
@@ -191,6 +216,17 @@ export default function (app: ServerAPI): Plugin {
             res.status(404).json({ ok: false, err: "no such display" });
             return;
           }
+          const source = owner(d);
+          // Writing through to the source would change every display that
+          // follows it; the designer pushes to the source on purpose.
+          if (source.id !== d.id) {
+            res.status(409).json({
+              ok: false,
+              err: `${d.name} shows ${source.name}'s layout`,
+              layoutFrom: source.id,
+            });
+            return;
+          }
           const check = checkLayout(req.body);
           if (!check.ok) {
             res.status(400).json({ ok: false, err: check.err });
@@ -205,7 +241,7 @@ export default function (app: ServerAPI): Plugin {
               .json({ ok: false, err: "could not store the layout" });
             return;
           }
-          notify(d.id, check.layout.name);
+          notify(d, check.layout.name);
           void showStatus();
           res.json({
             ok: true,
